@@ -1,5 +1,5 @@
 
-# Python-controlled 2D HFSS Simulation of Transmission Lines
+# Python 2D Transmission Line Simulation with HFSS
 
 This is something I have wanted to do for a while... still a work in progress. The goal is to automatically simulate typical transmission lines (maybe even waveguides) and get the 2D parameters, i.e. characteristic impedance and propagation constant, from which RLGC parameters could then be calculated.
 
@@ -21,4 +21,6 @@ There is no installtion. Just run the code provided in repository. You need to i
 ## License
 
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://choosealicense.com/licenses/mit/)
+
+## References
 
