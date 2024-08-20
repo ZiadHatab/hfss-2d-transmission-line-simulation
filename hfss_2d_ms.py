@@ -5,6 +5,13 @@ A code to run HFSS to solve a 2D full-wave microstrip line Z0 and gamma
 
 work in progress....
 
+
+TODO:
+    - (DONE!) use H-symmetry boundary to half the simulation
+    - (DOESN'T WORK!) enable analytical derivative computation
+    - Add surface roughness through Surface Impedance
+    - Add platting through Surface Impedance
+
 """
 
 import pyaedt
@@ -145,39 +152,48 @@ class HFSSMS:
             hfss['port_height'] = 'sub_width/2' # this is just an approximate... I probably should look into a better approach
     
             # draw the substrate 
-            sub = hfss.modeler.create_box(origin=['-sub_width/2', '0', '0'], 
-                                        sizes=['sub_width', 'sub_height', 'line_length'],
+            sub = hfss.modeler.create_box(origin=['0', '0', '0'], 
+                                        sizes=['sub_width/2', 'sub_height', 'line_length'],
                                         material=dielectric.name,
                                         name='SUB')
             sub.transparency = 0
     
             # draw the signal line
-            sig = hfss.modeler.create_box(origin=['-sig_width/2', 'sub_height', '0'], 
-                                      sizes=['sig_width', 'trace_thickness', 'line_length'],
+            sig = hfss.modeler.create_box(origin=['0', 'sub_height', '0'], 
+                                      sizes=['sig_width/2', 'trace_thickness', 'line_length'],
                                       material=conductor_name,
                                       name='SIG')
             sig.transparency = 0
             
             # draw the ground plane
-            gnd = hfss.modeler.create_box(origin=['-sub_width/2', '0', '0'], 
-                                        sizes=['sub_width', '-trace_thickness', 'line_length'],
+            gnd = hfss.modeler.create_box(origin=['0', '0', '0'], 
+                                        sizes=['sub_width/2', '-trace_thickness', 'line_length'],
                                         material=conductor_name,
                                         name='GND')
             gnd.transparency = 0
             
             # draw the port and assign wave-port
-            port = hfss.modeler.create_polyline(points=[['-sub_width/2', '0', '0'], ['sub_width/2', '0', '0']],
+            port = hfss.modeler.create_polyline(points=[['0', '0', '0'], ['sub_width/2', '0', '0']],
                                                 name='PORT').sweep_along_vector(sweep_vector=['0', 'port_height', '0'])
             
             P1 = hfss.wave_port(port, integration_line=[[0, self.h, 0], [0, 0, 0]],
                             modes=1, renormalize=False, deembed=0, name='P1')
             P1['Modes/Mode1/CharImp'] = 'Zpi'   # define characteristic impedance type
-    
+            
             # create air region 
             air = hfss.modeler.create_region(pad_value=[0,0,0,0,0,0], pad_type='Percentage Offset',
                                             name='AIRBOX')
-            hfss.assign_radiation_boundary_to_objects(air, name='Radiation')
-    
+            # assign symmetry boundary (H-plane symmetry)
+            hfss.assign_symmetry(assignment=[air.bottom_face_x], 
+                                 name='Symmetry', is_perfect_e=False)
+            hfss.set_impedance_multiplier(0.5)   # to compensate for the H-symmetry
+            # assign radiation boundary
+            hfss.assign_radiation_boundary_to_objects(assignment=[air.top_face_x, air.top_face_y, air.top_face_z], 
+                                                      name='Radiation')
+            
+            # fit all in screen (probably only useful if you looking at the GUI)
+            hfss.modeler.fit_all()
+            
             # define simulation setup for establishing the mesh
             setup1 = hfss.create_setup('setup1')
             setup1.enable_adaptive_setup_single(freq=solution_freq*1e-9, # this is stupid to must give in GHz
